@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 import itertools
 import os
-import re
 
 # Códigos ANSI para diseño en terminal
 C = '\033[96m'  # Cyan
 G = '\033[92m'  # Green
 Y = '\033[93m'  # Yellow
 R = '\033[91m'  # Red
-M = '\033[95m'  # Magenta
 W = '\033[0m'   # Reset/White
 
 def banner():
@@ -28,7 +26,6 @@ def leet_speak(word):
     """Aplica mutaciones Leet Speak comunes."""
     subs = {'a': ['a', '4', '@'], 'e': ['e', '3'], 'i': ['i', '1', '!'], 'o': ['o', '0'], 's': ['s', '$', '5']}
     opciones = [subs.get(char.lower(), [char]) for char in word]
-    # Limitamos variaciones para no saturar la memoria
     return [''.join(comb) for comb in itertools.islice(itertools.product(*opciones), 50)]
 
 def recopilar_datos():
@@ -65,7 +62,7 @@ def recopilar_datos():
         
     # Procesamiento de Semillas (Palabras)
     palabras_base = nombre_raw.split() + apellido_raw.split() + [color, animal, lugar, empresa]
-    palabras_base = [p for p in palabras_base if p] # Limpiar vacíos
+    palabras_base = [p for p in palabras_base if p] 
     
     # Procesamiento de Fechas (Números)
     numeros_base = set()
@@ -73,6 +70,13 @@ def recopilar_datos():
         numeros_base.update([anio_nac, anio_nac[-2:]])
     if anio_imp:
         numeros_base.update([anio_imp, anio_imp[-2:]])
+    
+    # Aislamiento de Fechas Individuales
+    if dia_nac:
+        numeros_base.add(dia_nac)
+    if mes_nac:
+        numeros_base.add(mes_nac)
+        
     if dia_nac and mes_nac:
         numeros_base.add(f"{dia_nac}{mes_nac}")
         numeros_base.add(f"{mes_nac}{dia_nac}")
@@ -88,46 +92,54 @@ def generar_diccionario(palabras, numeros, min_len, max_len):
     delimitadores = ['', '.', '_', '-']
     simbolos = ['', '!', '*', '$']
 
-    # 1. Capitalización Predictiva (Minúscula y Primera Mayúscula)
+    # 1. Capitalización Predictiva
     palabras_exp = []
     for p in palabras:
         palabras_exp.extend([p.lower(), p.capitalize()])
         
     # 2. Combinaciones Básicas y Bidireccionales (Sufijos y Prefijos)
     for palabra in palabras_exp:
-        # Añadir la palabra sola
         if min_len <= len(palabra) <= max_len:
             diccionario.add(palabra)
             
         for num in numeros + ['']:
             for delim in delimitadores:
                 for sim in simbolos:
-                    # Suffixing: Nombre + Delim + Numero + Simbolo (ej. Juan.2024!)
                     candidato_suf = f"{palabra}{delim}{num}{sim}"
                     if min_len <= len(candidato_suf) <= max_len:
                         diccionario.add(candidato_suf)
                     
-                    # Prefixing: Numero + Delim + Nombre + Simbolo (ej. 2024.Juan!)
-                    if num: # Solo si hay número para evitar duplicar
+                    if num: 
                         candidato_pref = f"{num}{delim}{palabra}{sim}"
                         if min_len <= len(candidato_pref) <= max_len:
                             diccionario.add(candidato_pref)
 
-    # 3. Permutación Limitada de 2 palabras juntas (ej. JuanPerez, PerroLima)
+    # 3. Permutación Limitada de 2 palabras juntas
     for r in itertools.permutations(palabras_exp, 2):
         for delim in delimitadores:
             base_compuesta = delim.join(r)
-            # Combinar palabras compuestas con números
             for num in [''] + numeros: 
                 candidato_comp = f"{base_compuesta}{num}"
                 if min_len <= len(candidato_comp) <= max_len:
                     diccionario.add(candidato_comp)
 
-    # 4. Fase de Leet Speak a contraseñas seleccionadas
+    # 4. NUEVO: Envoltura Numérica (Fecha + Palabra + Fecha)
+    print(f"{Y}[*] Generando envolturas numéricas avanzadas...{W}")
+    for palabra in palabras_exp:
+        for num_pref in numeros:
+            for num_suf in numeros:
+                # Filtro anti-duplicados lógicos
+                if num_pref and num_suf and num_pref != num_suf:
+                    for delim in delimitadores:
+                        # Patrón: Fecha + Delimitador + Palabra + Delimitador + Fecha
+                        candidato_env = f"{num_pref}{delim}{palabra}{delim}{num_suf}"
+                        if min_len <= len(candidato_env) <= max_len:
+                            diccionario.add(candidato_env)
+
+    # 5. Fase de Leet Speak
     diccionario_final = set(diccionario)
     print(f"{Y}[*] Aplicando Leet Speak a las combinaciones generadas...{W}")
     for cand in diccionario:
-        # Solo aplicamos leet a combinaciones fuertes para no saturar
         if len(cand) >= min_len:
             for leet_word in leet_speak(cand):
                 if min_len <= len(leet_word) <= max_len:
