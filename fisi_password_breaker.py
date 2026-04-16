@@ -64,9 +64,11 @@ def recopilar_datos():
     
     # Agrupamos las fechas (individuales y combinadas como DDMM o DDMMAAAA)
     fechas_base = [x for x in [anio_nac, mes_nac, dia_nac, anio_imp] if x]
+    
+    # CORRECCIÓN DE SINTAXIS AQUÍ (Uso de 'and' en lugar de 'y')
     if dia_nac and mes_nac:
         fechas_base.append(f"{dia_nac}{mes_nac}")
-    if dia_nac and mes_nac y anio_nac:
+    if dia_nac and mes_nac and anio_nac:
         fechas_base.append(f"{dia_nac}{mes_nac}{anio_nac}")
         fechas_base.append(f"{dia_nac}{mes_nac}{anio_nac[-2:]}") # Ej: 120590 en vez de 12051990
 
